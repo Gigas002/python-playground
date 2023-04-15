@@ -1,0 +1,10 @@
+__pycache__/
+.ipynb_checkpoints/
+.vscode/
+.pytest_cache/
+*.exe
+scraping-kadai/*.csv
+scraping-kadai/*.html
+data/
+machine_learning_notes.md
+scraping-kadai/kadai_1.py
