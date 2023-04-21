@@ -48,6 +48,10 @@ URL: https://realpython.com/python-web-scraping-practical-introduction/#use-an-h
 
 Content: writing a net-scrapper on python, using BeautifulSoup
 
+URL: https://realpython.com/dependency-management-python-poetry/
+
+Content: poetry guide
+
 6. PyTorch
 
 Lang: English
