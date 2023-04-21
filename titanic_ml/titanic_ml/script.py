@@ -9,7 +9,9 @@ from sklearn.ensemble import RandomForestRegressor
 
 # classes
 
-# Define model class
+# define model class
+
+
 class TitanicModel(nn.Module):
     def __init__(self):
         super(TitanicModel, self).__init__()
@@ -48,7 +50,6 @@ class TitanicModel(nn.Module):
         # the depth and the abstraction level of the network, but also increase the difficulty of
         # training and the possibility of vanishing or exploding gradients
 
-
         # nn.Sigmoid() defines a sigmoid activation function, which is another type of non-linear
         # transformation that can be applied to the input. A sigmoid function maps any real number
         # to a value between 0 and 1, which can be interpreted as a probability or a confidence score
@@ -69,67 +70,18 @@ class TitanicModel(nn.Module):
 
 # functions
 
-def remove_non_number_from_df(df, column_name):
-    df[f'{column_name}'] = pd.to_numeric(df[f'{column_name}'], errors='coerce')
 
-    return df.dropna(subset=[f'{column_name}'])
-
-def reclass(df : pd.DataFrame, is_train : bool = True):
-    df = remove_non_number_from_df(df, 'PassengerId')
-
-    if (is_train):
-        df = remove_non_number_from_df(df, 'Survived')
-
-    df = remove_non_number_from_df(df, 'Pclass')
-
-    d = {'male': 0, 'female': 1}
-    df['Sex'] = df['Sex'].map(d)
-    df = remove_non_number_from_df(df, 'Sex')
-
-    df = remove_non_number_from_df(df, 'Age')
-    # df['Age'] = df['Age'].astype('int64')
-
-    df = remove_non_number_from_df(df, 'SibSp')
-
-    df = remove_non_number_from_df(df, 'Parch')
-
-    df = remove_non_number_from_df(df, 'Fare')
-    # df['Fare'] = df['Fare'].astype('int64')
-
-    return df
-    
-def random_forest(train_path : str, test_path : str, out_name : str = "sklearn_submission.csv"):
-    train_df = pd.read_csv(train_path)
-    train_df = reclass(train_df)
-
-    test_df = pd.read_csv(test_path)
-    test_df = reclass(test_df, False)
-
-    train_labels = train_df['Survived']
-    features = ["Pclass" , "Sex", "Age", "SibSp", "Parch", "Fare"]
-    train_features = pd.get_dummies(train_df[features])
-    test_features = pd.get_dummies(test_df[features])
-
-    model = RandomForestRegressor(n_estimators = 1000, random_state = 1, n_jobs=-1)
-
-    model.fit(train_features, train_labels)
-
-    pred = model.predict(test_features).round().astype(int)
-
-    output = pd.DataFrame({'PassengerId': test_df['PassengerId'], 'Survived': pred})
-    output.to_csv(out_name, index=False)
-
-def torch_preapre_datasets(train : pd.DataFrame, test : pd.DataFrame):
-    train = train.dropna(subset=[f'Pclass'])
-    test = test.dropna(subset=[f'Pclass'])
-    train = train.dropna(subset=[f'Age'])
-    test = test.dropna(subset=[f'Age'])
-    train = train.dropna(subset=[f'SibSp'])
-    test = test.dropna(subset=[f'SibSp'])
-    train = train.dropna(subset=[f'Parch'])
-    test = test.dropna(subset=[f'Parch'])
-    train = train.dropna(subset=[f'Fare'])
-    test = test.dropna(subset=[f'Fare'])
+def prepare_datasets(train: pd.DataFrame, test: pd.DataFrame):
+    train['Pclass'].fillna(train['Pclass'].mean(), inplace=True)
+    test['Pclass'].fillna(test['Pclass'].mean(), inplace=True)
+    train['Age'].fillna(train['Age'].mean(), inplace=True)
+    test['Age'].fillna(test['Age'].mean(), inplace=True)
+    train['SibSp'].fillna(train['SibSp'].mean(), inplace=True)
+    test['SibSp'].fillna(test['SibSp'].mean(), inplace=True)
+    train['Parch'].fillna(train['Parch'].mean(), inplace=True)
+    test['Parch'].fillna(test['Parch'].mean(), inplace=True)
+    train['Fare'].fillna(train['Fare'].mean(), inplace=True)
+    test['Fare'].fillna(test['Fare'].mean(), inplace=True)
 
     # Convert categorical data
     d = {'male': 0, 'female': 1}
@@ -138,13 +90,36 @@ def torch_preapre_datasets(train : pd.DataFrame, test : pd.DataFrame):
 
     return (train, test)
 
-def torch_predict(train_path : str, test_path : str, out_name : str = "torch_submission.csv"):
+
+def random_forest(train_path: str, test_path: str, out_name: str = "sklearn_submission.csv"):
+    train = pd.read_csv(train_path)
+    test = pd.read_csv(test_path)
+
+    train, test = prepare_datasets(train, test)
+
+    train_labels = train['Survived']
+    features = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare"]
+    train_features = pd.get_dummies(train[features])
+    test_features = pd.get_dummies(test[features])
+
+    model = RandomForestRegressor(n_estimators=1000, random_state=1, n_jobs=-1)
+
+    model.fit(train_features, train_labels)
+
+    pred = model.predict(test_features).round().astype(int)
+
+    output = pd.DataFrame(
+        {'PassengerId': test['PassengerId'], 'Survived': pred})
+    output.to_csv(out_name, index=False)
+
+
+def torch_predict(train_path: str, test_path: str, out_name: str = "torch_submission.csv"):
     # Load data
     train = pd.read_csv(train_path)
     test = pd.read_csv(test_path)
 
     # Drop bad values
-    train, test = torch_preapre_datasets(train, test)
+    train, test = prepare_datasets(train, test)
 
     # Select features and target
     X_train = train[["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare"]].values
@@ -155,7 +130,7 @@ def torch_predict(train_path : str, test_path : str, out_name : str = "torch_sub
     X_train = torch.from_numpy(X_train).float()
     y_train = torch.from_numpy(y_train).float()
     X_test = torch.from_numpy(X_test).float()
-        
+
     # Create model instance
     model = TitanicModel()
 
@@ -258,10 +233,12 @@ def torch_predict(train_path : str, test_path : str, out_name : str = "torch_sub
     y_pred = predictions.detach().numpy().astype(int)
 
     # Create new dataframe with PassengerId and Survived columns
-    submission = pd.DataFrame({"PassengerId": test["PassengerId"], "Survived": y_pred.flatten()})
+    submission = pd.DataFrame(
+        {"PassengerId": test["PassengerId"], "Survived": y_pred.flatten()})
 
     # Export dataframe to csv file
     submission.to_csv(out_name, index=False)
+
 
 def main():
     train_path = "../data/titanic/train.csv"
@@ -273,6 +250,5 @@ def main():
 
 # execute
 
+
 main()
-
-
